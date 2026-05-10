@@ -662,13 +662,12 @@
     <div class="chapter-tag">L'estructura</div>
     <div class="thin-divider"></div>
     <h2 class="chapter-title">D'on venen exactament les emissions?</h2>
-    <p class="chapter-body">No totes les emissions són iguals. El diagrama sunburst desglossa les fonts: energia, transport, indústria, agricultura i més. A Espanya, el transport per carretera és el sector que més CO₂ genera, seguit de la indústria manufacturera.</p>
+    <p class="chapter-body">Les emissions de diòxid de carboni no es reparteixen igual per tot arreu. Depenen de moltes coses, com les decisions que es prenen i com està organitzada l'economia. Des de grans regions fins a països i sectors productors, cada un d'aquests nivells ens ajuda a entendre d'on surt realment el problema del canvi climàtic a escala mundial. Si mirem les coses de manera detallada, veiem que el problema no només és que el planeta està escalfant-se en alguns llocs, sinó que també depèn del tipus d'indústries que hi ha i de com s'obté l'energia.</p>
     <div class="chapter-callout">
-      La generació elèctrica espanyola <strong>ha reduït la seva petjada un 60%</strong> des del 2008, gràcies al creixement de l'eòlica i la solar. El transport, en canvi, continua sent el taló d'Aquil·les.
+      La generació elèctrica espanyola <strong>ha reduït la seva petjada un 60%</strong> des del 2008, gràcies al creixement de l'energia eòlica i solar.
     </div>
   </div>
   <div class="chapter-visual reveal-right">
-    <div class="visual-label">Sunburst CO₂ · Per sectors</div>
     <iframe src="https://dynamic-graphics-ri8r.vercel.app/sunburst_co2.html" title="Diagrama sunburst de fonts de CO2"></iframe>
   </div>
 </section>
@@ -676,7 +675,6 @@
 <!-- ═══════════════════════════════════════════════ CH4: TREEMAP -->
 <section class="chapter" id="chapter-4">
   <div class="chapter-visual reveal-left">
-    <div class="visual-label">Treemap CO₂ · Proporcions globals</div>
     <iframe src="https://dynamic-graphics-ri8r.vercel.app/treemap_co2.html" title="Treemap d'emissions CO2 per país i regió"></iframe>
   </div>
   <div class="chapter-text reveal-right">
@@ -713,7 +711,6 @@
     </div>
   </div>
   <div class="chapter-visual reveal">
-    <div class="visual-label">Sources & Sinks · Balanç global</div>
     <iframe src="https://dynamic-graphics-ri8r.vercel.app/sources_sinks_co2.html" title="Fonts i embornals de CO2 global"></iframe>
   </div>
 </section>
@@ -731,7 +728,6 @@
     </div>
   </div>
   <div class="chapter-visual reveal-right">
-    <div class="visual-label">Scatter · Temperatura vs CO₂</div>
     <iframe src="https://dynamic-graphics-ri8r.vercel.app/temp_scatter.html" title="Gràfic dispersió temperatura global vs emissions CO2"></iframe>
   </div>
 </section>
@@ -742,13 +738,13 @@
     <h2 class="closing-title">El CO₂ no espera.<br><em>Nosaltres tampoc hauríem d'esperar.</em></h2>
     <p class="closing-body">Les dades expliquen una història clara: el problema és real, urgent i desigualment distribuït. Espanya té eines —sol, vent, territori— per liderar la transició. La pregunta no és si podem. És si volem.</p>
     <a class="closing-link" href="https://dynamic-graphics-ri8r.vercel.app/" target="_blank">
-      Veure totes les visualitzacions →
+      Veure altres visualitzacions →
     </a>
   </div>
 </section>
 
 <footer>
-  Dades: Our World in Data · Global Carbon Project · IPCC &nbsp;·&nbsp;
+  Dades: Our World in Data · Grup 6 Visualització de dades · Grau Enginyeria de Dades (UAB) &nbsp;·&nbsp;
   Visualitzacions: <a href="https://dynamic-graphics-ri8r.vercel.app/" target="_blank">dynamic-graphics-ri8r.vercel.app</a>
 </footer>
 
@@ -975,6 +971,46 @@ function initRace() {
   }, { threshold: 0.4 });
 
   raceObserver.observe(document.getElementById('race-visual'));
+
+  const mapFrame = document.getElementById('worldMapIframe');
+  const chapterTwo = document.getElementById('chapter-2');
+
+  function playWorldMap() {
+    if (!mapFrame || !mapFrame.contentWindow) return false;
+    const win = mapFrame.contentWindow;
+    const doc = win.document;
+    const chart = doc.querySelector('.js-plotly-plot, .plotly');
+    if (!chart || !win.Plotly || typeof win.Plotly.animate !== 'function') return false;
+    win.Plotly.animate(chart, null, {
+      fromcurrent: true,
+      mode: 'immediate',
+      transition: { duration: 0, easing: 'linear' },
+      frame: { duration: 800, redraw: true }
+    });
+    return true;
+  }
+
+  if (mapFrame && chapterTwo) {
+    const mapObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && !mapFrame.dataset.loaded) {
+          mapFrame.dataset.loaded = 'true';
+          mapFrame.src = mapFrame.dataset.src;
+          mapFrame.addEventListener('load', () => {
+            let retries = 0;
+            const interval = setInterval(() => {
+              if (playWorldMap() || retries > 10) {
+                clearInterval(interval);
+              }
+              retries += 1;
+            }, 250);
+          }, { once: true });
+          mapObserver.disconnect();
+        }
+      });
+    }, { threshold: 0.35 });
+    mapObserver.observe(chapterTwo);
+  }
 }
 
 // Esperar que Plotly carregui
