@@ -1,82 +1,24 @@
 library(tidyverse)
-library(GGally)
-library(countrycode)
+library(plotly)
+library(htmlwidgets)
 
-set.seed(42)
-
-# ============================================================
-# Dades
-# ============================================================
 df <- read_csv("master_dataset.csv", show_col_types = FALSE)
 
-vars <- c("co2_prod_pc","gdp_pc","hdi","life_exp","gini")
+dat <- df |>
+  filter(Year==2019, !is.na(Code)) |>
+  select(co2_prod_pc, gdp_pc, hdi, life_exp, gini) |> drop_na() |>
+  mutate(co2_q = cut(co2_prod_pc, quantile(co2_prod_pc, c(0,.25,.5,.75,1), na.rm=TRUE),
+                     labels=c("Baix","Mig","Alt","Molt alt"), include.lowest=TRUE))
 
-nice <- c(
-  co2_prod_pc = "CO2 pc",
-  gdp_pc = "GDP pc",
-  hdi = "HDI",
-  life_exp = "Esp vida",
-  gini = "Gini"
-)
-
-# ============================================================
-# Gini (últim valor disponible)
-# ============================================================
-gini_recent <- df |>
-  filter(Year >= 2010, !is.na(gini)) |>
-  group_by(Code) |>
-  slice_max(Year, n = 1) |>
-  ungroup() |>
-  select(Code, gini)
-
-# ============================================================
-# Dataset 2019 net
-# ============================================================
-df2019 <- df |>
-  filter(Year == 2019) |>
-  select(Code, all_of(vars)) |>
-  drop_na(co2_prod_pc, gdp_pc, hdi, life_exp) |>
-  left_join(gini_recent, by = "Code") |>
-  mutate(gini = coalesce(gini, median(gini, na.rm = TRUE)))
-
-# ============================================================
-# Grup CO2 (quartils)
-# ============================================================
-df2019$tier <- cut(
-  df2019$co2_prod_pc,
-  breaks = quantile(df2019$co2_prod_pc, na.rm = TRUE),
-  labels = c("Baix","Mig","Alt","Molt alt"),
-  include.lowest = TRUE
-)
-
-# ============================================================
-# Log per estabilitzar distribucions
-# ============================================================
-df2019 <- df2019 |>
-  mutate(
-    co2_prod_pc = log10(co2_prod_pc + 1),
-    gdp_pc = log10(gdp_pc)
-  )
-
-dat <- df2019 |> select(all_of(vars), tier)
-names(dat)[1:length(vars)] <- nice[vars]
-
-# ============================================================
-# SPLOM simple
-# ============================================================
-colors <- c("Baix"="#2ECC71","Mig"="#F1C40F",
-            "Alt"="#E67E22","Molt alt"="#C0392B")
-
-p <- ggpairs(
-  dat,
-  columns = 1:length(vars),
-  aes(color = tier),
-  lower = list(continuous = wrap("smooth_lm", se = FALSE)),
-  diag  = list(continuous = "densityDiag"),
-  upper = list(continuous = wrap("cor", size = 3))
-) +
-  scale_color_manual(values = colors) +
-  theme_minimal() +
-  labs(title = "SPLOM - relacions entre variables (2019)")
-
-ggsave("grafics/splom.png", p, width = 12, height = 10, dpi = 150)
+plot_ly(dat, type="splom",
+  dimensions=list(
+    list(label="CO2 pc",   values=~log10(co2_prod_pc+.01)),
+    list(label="PIB pc",   values=~log10(gdp_pc)),
+    list(label="HDI",      values=~hdi),
+    list(label="Esp.Vida", values=~life_exp),
+    list(label="Gini",     values=~gini)),
+  color=~co2_q,
+  colors=c(Baix="#2ECC71",Mig="#F1C40F",Alt="#E67E22","Molt alt"="#C0392B"),
+  marker=list(size=4, opacity=0.6)) |>
+  layout(title="SPLOM variables socioeconomiques i CO2 (2019)") |>
+  saveWidget("grafics/splom.html", selfcontained=TRUE)
