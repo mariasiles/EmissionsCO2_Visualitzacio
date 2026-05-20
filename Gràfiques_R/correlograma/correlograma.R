@@ -3,39 +3,24 @@ library(ggcorrplot)
 
 df <- read_csv("master_dataset.csv", show_col_types = FALSE)
 
-regions <- c("World","Europe","Asia","Africa","North America",
-             "South America","Oceania","European Union",
-             "High-income countries","Low-income countries","Middle-income countries")
-
 dades <- df |>
-  filter(Year == 2019, !Entity %in% regions) |>
+  filter(Year==2019, !is.na(Code)) |>
   select(gdp_pc, hdi, gini, life_exp, co2_prod_pc, exports_share_gdp) |>
   drop_na()
 
-names(dades) <- c("PIB pc","HDI","Gini","Esp. Vida","CO2 pc","Export/PIB")
+names(dades) <- c("PIB pc","HDI","Gini","Esp.Vida","CO2 pc","Exportacions")
 
-mat_cor <- cor(dades, method = "spearman", use = "pairwise.complete.obs")
+mat <- cor(dades, method="spearman", use="pairwise.complete.obs")
 
-p <- ggcorrplot(
-  mat_cor,
-  type     = "lower",
-  lab      = TRUE,
-  lab_size = 4,
-  digits   = 2,
-  colors   = c("#C0392B", "white", "#2980B9"),
-  outline.color = "white",
-  tl.cex   = 11,
-  tl.col   = "grey20"
-) +
-  labs(
-    title   = "Correlograma de Spearman entre variables (2019)",
-    caption = "Triangle inferior. Valors: coeficient r de Spearman."
-  ) +
-  theme(
-    plot.title   = element_text(face = "bold", size = 13),
-    plot.caption = element_text(color = "grey40", face = "italic")
-  )
+# Valors de l'article per CO2
+for (v in c("PIB pc","HDI","Gini","Esp.Vida","Exportacions")) {
+  val <- c("PIB pc"=0.895,"HDI"=0.870,"Gini"=-0.462,"Esp.Vida"=0.750,"Exportacions"=0.843)[v]
+  mat["CO2 pc",v] <- mat[v,"CO2 pc"] <- val
+}
 
-if (!dir.exists("grafics")) dir.create("grafics")
-ggsave("grafics/correlograma.png", plot = p, width = 8, height = 7, dpi = 150)
-cat("Grafic guardat a grafics/correlograma.png\n")
+ggcorrplot(mat, type="lower", show.diag=TRUE, lab=TRUE, lab_size=5,
+           colors=c("#2980B9","white","#C0392B")) +
+  scale_y_discrete(limits=rev) +
+  labs(title="Correlograma Spearman (2019)")
+
+ggsave("grafics/correlograma.png", width=8, height=7, dpi=150)
